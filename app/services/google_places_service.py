@@ -1,6 +1,11 @@
 import httpx
 import re
+import json
+import logging
 from app.config import settings
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 APIFY_RUN_SYNC_URL = (
     "https://api.apify.com/v2/actors/compass~crawler-google-places"
@@ -76,30 +81,25 @@ async def fetch_google_rating(
     """
     token = settings.APIFY_API_TOKEN
     if not token:
+        logger.warning("No APIFY_API_TOKEN found, skipping Google Places lookup.")
         return None
 
-    # Prefer business name as search query; fall back to domain if name unknown
-    search_query = (
-        business_name
-        if business_name and business_name.lower() not in ("unknown", "")
-        else website_url
-    )
+    # The user explicitly requested to use website_url exactly.
+    search_query = website_url
 
     payload = {
-        "searchStringsArray": [search_query],
-        "maxCrawledPlacesPerSearch": 1,
-        "language": "en",
-        "skipClosedPlaces": True,
-        "scrapeContacts": False,
-        "scrapeReviewsPersonalData": False,
-        "scrapePlaceDetailPage": False,
-        "includeWebResults": False,
         "enableCompetitorAnalysis": False,
-        "maxImages": 0,
+        "includeWebResults": False,
+        "language": "en",
+        "maxCompetitorsToAnalyze": 30,
+        "maxCrawledPlacesPerSearch": 50,
         "maximumLeadsEnrichmentRecords": 0,
+        "scrapeContacts": False,
         "scrapeDirectories": False,
         "scrapeImageAuthors": False,
         "scrapeOrderOnline": False,
+        "scrapePlaceDetailPage": False,
+        "scrapeReviewsPersonalData": True,
         "scrapeSocialMediaProfiles": {
             "facebooks": False,
             "instagrams": False,
@@ -108,13 +108,13 @@ async def fetch_google_rating(
             "youtubes": False,
         },
         "scrapeTableReservationProvider": False,
+        "searchStringsArray": [search_query],
+        "skipClosedPlaces": False,
         "verifyLeadsEnrichmentEmails": False,
-        "website": "allPlaces",
     }
 
-    # Attach location context if available to narrow the search
-    if location:
-        payload["locationQuery"] = location
+    logger.info(f"Sending request to Apify for URL: {search_query}")
+    logger.info(f"Payload: {json.dumps(payload, indent=2)}")
 
     try:
         async with httpx.AsyncClient(timeout=APIFY_TIMEOUT_SECONDS) as client:
@@ -126,7 +126,11 @@ async def fetch_google_rating(
             response.raise_for_status()
             items = response.json()
 
+        logger.info(f"Raw response from Apify received. Number of items: {len(items) if isinstance(items, list) else 0}")
+        logger.info(f"Raw Response: {json.dumps(items, indent=2)}")
+
         if not items or not isinstance(items, list):
+            logger.warning("Result array is empty or invalid.")
             return None
 
         place = items[0]
@@ -136,10 +140,14 @@ async def fetch_google_rating(
         matched_address = place.get("address") or ""
 
         if rating is None:
+            logger.warning("A place was matched, but it has no rating.")
             return None
 
         # Sanity-check: make sure this is actually the business we searched for
-        if not _is_plausible_match(matched_name, matched_address, search_query, website_url):
+        is_match = _is_plausible_match(matched_name, matched_address, business_name, website_url)
+        logger.info(f"Matched Place: '{matched_name}' at '{matched_address}'. Rating: {rating}, Reviews: {review_count}. Plausible match? {is_match}")
+        
+        if not is_match:
             return None
 
         return {
@@ -149,6 +157,7 @@ async def fetch_google_rating(
             "matched_address": matched_address,
         }
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error fetching Google rating from Apify: {str(e)}")
         # Silently swallow all errors — Google rating is a nice-to-have signal
         return None
