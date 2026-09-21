@@ -18,4 +18,7 @@ app.include_router(problems.router, prefix="/api")
 app.include_router(offer.router, prefix="/api")
 app.include_router(outreach.router, prefix="/api")
 
-app.mount("/", StaticFiles(directory="public", html=True), name="public")
+import os
+
+if os.path.isdir("public"):
+    app.mount("/", StaticFiles(directory="public", html=True), name="public")
