@@ -5,17 +5,18 @@
             "use": "@vercel/python"
         }
     ],
-    "routes": [
+    "rewrites": [
         {
-            "src": "/api/(.*)",
-            "dest": "/app/main.py"
+            "source": "/api/(.*)",
+            "destination": "/app/main.py"
         },
         {
-            "handle": "filesystem"
+            "source": "/assets/(.*)",
+            "destination": "/public/assets/$1"
         },
         {
-            "src": "/(.*)",
-            "dest": "/index.html"
+            "source": "/(.*)",
+            "destination": "/public/index.html"
         }
     ]
 }
