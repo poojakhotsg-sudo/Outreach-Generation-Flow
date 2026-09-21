@@ -22,7 +22,7 @@ async def research_business(website_url: str) -> dict:
 
     if google_data is not None:
         rating = google_data["rating"]
-        review_count = google_data["user_ratings_total"]
+        review_count = google_data["review_count"]
 
         # Store raw values for the frontend to consume
         structured["google_rating"] = rating
