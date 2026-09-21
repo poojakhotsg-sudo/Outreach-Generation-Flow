@@ -51,7 +51,7 @@ async def scrape_website(url: str) -> dict:
                 "calls_to_action_found": [
                     link for link in links
                     if re.search(r'(book|contact|schedule|call|buy|shop|demo|start)', link['text'].lower())
-                ]
+                ][:20]
             }
 
     except Exception as e:

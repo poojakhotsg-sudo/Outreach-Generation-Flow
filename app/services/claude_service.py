@@ -54,6 +54,16 @@ def _extract_json(content: str) -> str:
     return content
 
 
+def _safe_json_loads(content: str) -> dict:
+    """Parses model output as JSON, raising a clear error if it was truncated or malformed."""
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        raise ValueError(
+            "The AI response was incomplete or malformed. Please try again."
+        )
+
+
 async def analyze_research(raw_scrape: dict) -> dict:
     prompt = f"""
     You are a business research analyst. Analyze the following raw data scraped from a business's website and produce a structured summary.
@@ -81,11 +91,12 @@ async def analyze_research(raw_scrape: dict) -> dict:
     """
     response = _create_with_retry(
         model=MODEL,
-        max_tokens=1200,
-        messages=[{"role": "user", "content": prompt}]
+        max_tokens=4000,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"}
     )
     content = _extract_json(_get_text(response))
-    structured = json.loads(content)
+    structured = _safe_json_loads(content)
     structured["raw"] = raw_scrape
     return structured
 
@@ -116,11 +127,12 @@ async def generate_problems(research_data: dict) -> dict:
     """
     response = _create_with_retry(
         model=MODEL,
-        max_tokens=1000,
-        messages=[{"role": "user", "content": prompt}]
+        max_tokens=1500,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"}
     )
     content = _extract_json(_get_text(response))
-    return json.loads(content)
+    return _safe_json_loads(content)
 
 
 def _format_problems(selected_problems: list) -> str:
@@ -213,10 +225,11 @@ Return ONLY this JSON:
         model=MODEL,
         max_tokens=600,
         system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}]
+        messages=[{"role": "user", "content": user_prompt}],
+        response_format={"type": "json_object"}
     )
     content = _extract_json(_get_text(response))
-    return json.loads(content)
+    return _safe_json_loads(content)
 
 
 async def suggest_final_offer(selected_problems: list, research_data: dict, initial_solution: str, guidance: dict, additional_context: str = "") -> str:
@@ -319,8 +332,9 @@ async def generate_outreach_email(research_data: dict, selected_problems: list, 
     """
     response = _create_with_retry(
         model=MODEL,
-        max_tokens=1200,
-        messages=[{"role": "user", "content": prompt}]
+        max_tokens=2500,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"}
     )
     content = _extract_json(_get_text(response))
-    return json.loads(content)
+    return _safe_json_loads(content)

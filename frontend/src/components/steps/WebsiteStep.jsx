@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import { handleFetchError } from '../../utils/api';
 
+const DOMAIN_PATTERN = /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
+
 function normalizeAndValidateUrl(raw) {
   let value = raw.trim();
   if (!value) {
     return { error: 'Please enter a website URL.' };
   }
-  if (!/^https?:\/\//i.test(value)) {
+  const protocolMatch = value.match(/^(https?):\/\//i);
+  if (protocolMatch) {
+    value = `${protocolMatch[1].toLowerCase()}://${value.slice(protocolMatch[0].length)}`;
+  } else {
     value = `https://${value}`;
   }
   try {
     const parsed = new URL(value);
-    if (!parsed.hostname.includes('.')) {
+    if (!DOMAIN_PATTERN.test(parsed.hostname)) {
       return { error: 'Please enter a valid website URL.' };
     }
     return { url: value };

@@ -17,4 +17,6 @@ async def process_research(request: ResearchRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"We couldn't access this website. Please check the URL and try again. ({str(e)})")
+        print(f"Error processing research for {request.website_url}: {e}")
+        raise HTTPException(status_code=500, detail="We couldn't research this website right now. Please try again.")
+
