@@ -135,8 +135,10 @@ def _format_problems(selected_problems: list) -> str:
     return "\n\n".join(blocks)
 
 
-async def suggest_solution(selected_problems: list, research_data: dict) -> str:
+async def suggest_solution(selected_problems: list, research_data: dict, additional_context: str = "") -> str:
     problem_count = len(selected_problems)
+
+    context_instruction = f"\n\nAdditional Context About Us:\n{additional_context}\nYou MUST incorporate specific details from this context (company name, capabilities, industries, named clients if given) into your response where relevant. Do not ignore this section." if additional_context else ""
 
     system_prompt = (
         "You are a strict business consultant operating under hard content rules. "
@@ -145,7 +147,7 @@ async def suggest_solution(selected_problems: list, research_data: dict) -> str:
         "results, outcomes, revenue figures, guarantees, timeframes, pricing, service names, "
         "CTA labels, or any social proof not found word-for-word in the research. "
         "If evidence is missing, say so and frame it as something the user should verify."
-    )
+    ) + context_instruction
 
     user_prompt = f"""A user has selected {problem_count} problem(s) on a business website. Write one concise, realistic solution that addresses ALL of them.
 
@@ -163,22 +165,24 @@ Output rules:
 
     response = _create_with_retry(
         model=MODEL,
-        max_tokens=250,
+        max_tokens=500,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}]
     )
     return _get_text(response).strip()
 
 
-async def guide_offer(selected_problems: list, initial_solution: str, research_data: dict = None) -> dict:
+async def guide_offer(selected_problems: list, initial_solution: str, research_data: dict = None, additional_context: str = "") -> dict:
     problem_count = len(selected_problems)
+
+    context_instruction = f"\n\nAdditional Context About Us:\n{additional_context}\nYou MUST incorporate specific details from this context (company name, capabilities, industries, named clients if given) into your response where relevant. Do not ignore this section." if additional_context else ""
 
     system_prompt = (
         "You are a strict sales and marketing expert. "
         "You may ONLY use information explicitly present in the user's initial solution and the verified research. "
         "NEVER invent client names, testimonials, case studies, results, revenue figures, guarantees, timeframes, pricing, or service names. "
         "If evidence is missing for a field, use the exact placeholder string specified."
-    )
+    ) + context_instruction
 
     user_prompt = f"""A user has selected {problem_count} problem(s) and provided an initial solution. Break it into a structured offer breakdown.
 
@@ -207,7 +211,7 @@ Return ONLY this JSON:
 
     response = _create_with_retry(
         model=MODEL,
-        max_tokens=500,
+        max_tokens=600,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}]
     )
@@ -215,7 +219,7 @@ Return ONLY this JSON:
     return json.loads(content)
 
 
-async def suggest_final_offer(selected_problems: list, research_data: dict, initial_solution: str, guidance: dict) -> str:
+async def suggest_final_offer(selected_problems: list, research_data: dict, initial_solution: str, guidance: dict, additional_context: str = "") -> str:
     problem_count = len(selected_problems)
 
     timeframe_val = guidance.get('timeframe', '')
@@ -235,15 +239,17 @@ async def suggest_final_offer(selected_problems: list, research_data: dict, init
         else f'Include this guarantee: "{guarantee_val}"'
     )
 
+    context_instruction = f"\n\nAdditional Context About Us:\n{additional_context}\nYou MUST incorporate specific details from this context (company name, capabilities, industries, named clients if given) into your response where relevant. Do not ignore this section." if additional_context else ""
+
     system_prompt = (
         "You are a strict sales copywriter. "
         "Your only permitted sources are: (1) the user's initial solution, (2) the AI guidance derived from it, "
         "and (3) the verified business research. "
         "NEVER invent client names, logos, testimonials, case studies, industry verticals, results, revenue figures, "
         "percentage improvements, pricing, CTA labels, or guarantees unless in the sources."
-    )
+    ) + context_instruction
 
-    user_prompt = f"""Draft a 1-3 sentence final offer for the user to drop into a cold email.
+    user_prompt = f"""Draft a 1-4 sentence final offer for the user to drop into a cold email.
 
 Selected Problem(s) — the offer MUST address ALL {problem_count}:
 {_format_problems(selected_problems)}
@@ -264,18 +270,18 @@ Output rules:
 1. First person (e.g. "We'll ..."), ready to paste into an email.
 2. Address all {problem_count} problems coherently.
 3. Follow the Timeframe and Guarantee instructions exactly.
-4. 1-3 sentences. Plain text. No markdown. No preamble."""
+4. 1-4 sentences. Plain text. No markdown. No preamble."""
 
     response = _create_with_retry(
         model=MODEL,
-        max_tokens=300,
+        max_tokens=800,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}]
     )
     return _get_text(response).strip()
 
 
-async def generate_outreach_email(research_data: dict, selected_problems: list, final_offer: str, additional_instructions: str = "") -> dict:
+async def generate_outreach_email(research_data: dict, selected_problems: list, final_offer: str, additional_instructions: str = "", additional_context: str = "") -> dict:
     problems_summary = "\n".join(
         f"- {p.get('title')} - {p.get('why')}" for p in selected_problems
     )
@@ -287,6 +293,7 @@ async def generate_outreach_email(research_data: dict, selected_problems: list, 
     {problems_summary}
     Final Offer: {final_offer}
     Additional Instructions: {additional_instructions}
+    Additional Context About Us: {additional_context}
 
     Rules:
     1. Reference the specific business and something actually discovered in the research.
@@ -296,6 +303,7 @@ async def generate_outreach_email(research_data: dict, selected_problems: list, 
     5. Use a simple Call to Action.
     6. Do NOT use generic sales language, fake personalization, unsupported claims, or invented guarantees unless in the Final Offer.
     7. If the contact name is unknown, use "Hi there," or "Hi team,". Do not invent a name.
+    8. If Additional Context About Us is provided, you MUST incorporate specific details from it (company name, capabilities, etc) into your response where relevant. Do not ignore it.
 
     Return strictly as JSON:
     {{
@@ -306,7 +314,7 @@ async def generate_outreach_email(research_data: dict, selected_problems: list, 
     """
     response = _create_with_retry(
         model=MODEL,
-        max_tokens=800,
+        max_tokens=1200,
         messages=[{"role": "user", "content": prompt}]
     )
     content = _extract_json(_get_text(response))

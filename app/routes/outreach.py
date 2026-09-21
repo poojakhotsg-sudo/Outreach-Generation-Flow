@@ -11,6 +11,7 @@ class OutreachRequest(BaseModel):
     selected_problems: List[Dict[str, Any]]
     final_solution_offer: str
     additional_instructions: Optional[str] = ""
+    additional_context: str = ""
 
 
 @router.post("/generate-email")
@@ -20,7 +21,8 @@ async def create_outreach(request: OutreachRequest):
             request.business_research,
             request.selected_problems,
             request.final_solution_offer,
-            request.additional_instructions
+            request.additional_instructions,
+            request.additional_context
         )
         return email_data
     except Exception as e:

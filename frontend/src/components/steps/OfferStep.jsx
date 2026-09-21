@@ -139,6 +139,7 @@ export default function OfferStep({ selectedProblems, onComplete, researchData, 
           selected_problems: selectedProblems,
           final_solution_offer: finalOffer,
           additional_instructions: '',
+          additional_context: additionalContext,
         }),
       });
 
