@@ -66,8 +66,8 @@ export default function WebsiteStep({ onComplete }) {
           <label htmlFor="website-url">Website URL</label>
           <input
             id="website-url"
-            type="url"
-            placeholder="https://examplebusiness.com"
+            type="text"
+            placeholder="e.g. shopify.com or https://shopify.com"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             disabled={loading}
