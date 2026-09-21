@@ -53,7 +53,7 @@ export default function App() {
             <ResearchStep researchData={researchData} onComplete={handleResearchComplete} />
           )}
           {currentStep === 3 && (
-            <ProblemsStep problems={problems} onContinue={handleProblemsComplete} />
+            <ProblemsStep problems={problems} researchData={researchData} onContinue={handleProblemsComplete} />
           )}
           {currentStep === 4 && (
             <OfferStep

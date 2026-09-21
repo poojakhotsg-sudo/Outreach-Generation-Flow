@@ -1,7 +1,37 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
-export default function ProblemsStep({ problems, onContinue }) {
+const GOOGLE_RATING_THRESHOLD = 4.5;
+
+/**
+ * Builds a Google rating problem card from research data.
+ * Returns null if no Google data is present or rating is above threshold.
+ */
+function buildGoogleProblemCard(researchData) {
+  const rating = researchData?.google_rating;
+  const reviewCount = researchData?.google_review_count;
+
+  if (rating == null || rating >= GOOGLE_RATING_THRESHOLD) return null;
+
+  const confidence = rating < 4.0 ? 'high' : 'medium';
+  const reviewNote = reviewCount != null ? ` from ${reviewCount} reviews` : '';
+
+  return {
+    _isGoogleCard: true,  // marker so we can identify it later if needed
+    title: 'Below-Average Google Review Score',
+    confidence,
+    evidence: `The business currently holds a ${rating}★ Google rating${reviewNote}, below the ${GOOGLE_RATING_THRESHOLD} benchmark that signals strong local trust.`,
+    why: `A sub-${GOOGLE_RATING_THRESHOLD} rating can cause price-sensitive or trust-conscious prospects to choose a competitor before ever reaching the site, especially for local/service businesses where reviews are a primary trust signal.`,
+  };
+}
+
+export default function ProblemsStep({ problems, researchData, onContinue }) {
   const [selectedIdxs, setSelectedIdxs] = useState([]);
+
+  // Build the full display list: Google card (if applicable) prepended to LLM problems
+  const displayProblems = useMemo(() => {
+    const googleCard = buildGoogleProblemCard(researchData);
+    return googleCard ? [googleCard, ...problems] : problems;
+  }, [problems, researchData]);
 
   function toggle(idx) {
     setSelectedIdxs((prev) =>
@@ -11,7 +41,7 @@ export default function ProblemsStep({ problems, onContinue }) {
 
   function handleContinue() {
     const sorted = [...selectedIdxs].sort((a, b) => a - b);
-    const selected = sorted.map((idx) => problems[idx]);
+    const selected = sorted.map((idx) => displayProblems[idx]);
     onContinue(selected);
   }
 
@@ -21,7 +51,7 @@ export default function ProblemsStep({ problems, onContinue }) {
       <p className="subtitle">Select one or more problems worth focusing your outreach on.</p>
 
       <div className="problems-grid">
-        {problems.map((prob, idx) => {
+        {displayProblems.map((prob, idx) => {
           const isSelected = selectedIdxs.includes(idx);
           return (
             <div
