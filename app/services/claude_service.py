@@ -246,7 +246,9 @@ async def suggest_final_offer(selected_problems: list, research_data: dict, init
         "Your only permitted sources are: (1) the user's initial solution, (2) the AI guidance derived from it, "
         "and (3) the verified business research. "
         "NEVER invent client names, logos, testimonials, case studies, industry verticals, results, revenue figures, "
-        "percentage improvements, pricing, CTA labels, or guarantees unless in the sources."
+        "percentage improvements, pricing, CTA labels, or guarantees unless in the sources. "
+        "Base this ONLY on the facts, claims, and deliverables stated in the Offer Guidance provided. Do not invent new deliverables, technologies, statistics, or claims that are not already present there. "
+        "CRITICALLY: frame every deliverable as something you will DO or BUILD for the client (e.g. 'we'll create a case-study section', 'we'll help you build tiered pricing'), never as something you already possess and are ready to hand over (avoid phrasing like 'here is our case study', 'I'll send you the materials', 'you'll get our PDF'). The client currently lacks these assets, which is why this offer exists."
     ) + context_instruction
 
     user_prompt = f"""Draft a 1-4 sentence final offer for the user to drop into a cold email.
@@ -260,7 +262,7 @@ Verified Business Research:
 User's Initial Solution:
 {initial_solution}
 
-AI Guidance:
+AI Guidance (YOUR SINGLE SOURCE OF TRUTH FOR THE OFFER):
 What: {guidance.get('what', '')}
 Outcome: {guidance.get('outcome', '')}
 Timeframe: {timeframe_instruction}
@@ -270,7 +272,8 @@ Output rules:
 1. First person (e.g. "We'll ..."), ready to paste into an email.
 2. Address all {problem_count} problems coherently.
 3. Follow the Timeframe and Guarantee instructions exactly.
-4. 1-4 sentences. Plain text. No markdown. No preamble."""
+4. STRICTLY ground all claims in the AI Guidance.
+5. 1-4 sentences. Plain text. No markdown. No preamble."""
 
     response = _create_with_retry(
         model=MODEL,
@@ -300,10 +303,12 @@ async def generate_outreach_email(research_data: dict, selected_problems: list, 
     2. Naturally bring up the selected problem(s). Weave all of them in — do not omit any.
     3. Connect the problem(s) to the user's final offer.
     4. Be concise, sound natural and human.
-    5. Use a simple Call to Action.
+    5. The Call to Action MUST invite a conversation or call to discuss the work (e.g. 'would you be open to a brief call next week?'). Do NOT imply materials are ready to send immediately unless the offer genuinely involves handing over a free existing asset (like an audit or template).
     6. Do NOT use generic sales language, fake personalization, unsupported claims, or invented guarantees unless in the Final Offer.
     7. If the contact name is unknown, use "Hi there," or "Hi team,". Do not invent a name.
     8. If Additional Context About Us is provided, you MUST incorporate specific details from it (company name, capabilities, etc) into your response where relevant. Do not ignore it.
+    9. Base this ONLY on the Final Offer and Selected Problems. Do not invent new deliverables, technologies, statistics, or claims.
+    10. CRITICALLY: frame deliverables as things we will DO or BUILD for the client, not things we already possess to hand over.
 
     Return strictly as JSON:
     {{
