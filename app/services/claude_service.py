@@ -7,7 +7,7 @@ client = groq.Groq(api_key=settings.GROQ_API_KEY)
 
 MODEL = "openai/gpt-oss-120b"
 
-_RETRYABLE_STATUS_CODES = {408, 429, 500, 502, 503, 529}
+_RETRYABLE_STATUS_CODES = {408, 429, 500, 502, 503, 504, 524, 529}
 _MAX_RETRIES = 3
 _BASE_DELAY_SECONDS = 1.5
 
@@ -26,14 +26,19 @@ def _create_with_retry(*, system=None, messages, max_tokens, model=MODEL, **kwar
             )
         except groq.APIStatusError as e:
             last_error = e
+            print(f"Groq APIStatusError on attempt {attempt}: {e.status_code} - {e.response.text}")
             if e.status_code not in _RETRYABLE_STATUS_CODES or attempt == _MAX_RETRIES:
+                print(f"Raising APIStatusError: {e}")
                 raise
         except groq.APIConnectionError as e:
             last_error = e
+            print(f"Groq APIConnectionError on attempt {attempt}: {e}")
             if attempt == _MAX_RETRIES:
+                print(f"Raising APIConnectionError: {e}")
                 raise
         time.sleep(_BASE_DELAY_SECONDS * (2 ** attempt))
     assert last_error is not None
+    print(f"Exhausted retries, raising last_error: {last_error}")
     raise last_error
 
 
@@ -58,7 +63,8 @@ def _safe_json_loads(content: str) -> dict:
     """Parses model output as JSON, raising a clear error if it was truncated or malformed."""
     try:
         return json.loads(content)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"JSONDecodeError: {e}. Raw content was: {repr(content)}")
         raise ValueError(
             "The AI response was incomplete or malformed. Please try again."
         )

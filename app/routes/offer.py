@@ -38,5 +38,7 @@ async def get_offer_guide(request: OfferRequest):
         )
         return {"guidance": guidance, "suggested_final_offer": suggested_final_offer}
     except Exception as e:
+        import traceback
         print(f"Error generating offer guide: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="We couldn't generate the requested result. Please try again.")
